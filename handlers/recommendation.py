@@ -1,6 +1,7 @@
 import random
 from collections import defaultdict
-from typing import Dict, List, Tuple
+from dataclasses import dataclass
+from typing import Dict, List
 
 from aiogram import F, Router
 from aiogram.filters import Command
@@ -10,48 +11,66 @@ from keyboards import main_menu_keyboard, temperature_keyboard
 
 router = Router()
 
+
+@dataclass(frozen=True)
+class Anime:
+    """Карточка аниме для демонстрации рекомендаций."""
+
+    title: str
+    description: str
+    tags: List[str]
+    url: str
+
+
 # Простые данные для демонстрации; в реальном проекте вместо этого будет вызов API.
-Anime = Tuple[str, str, str]
 RECOMMENDATIONS: List[Anime] = [
-    (
-        "Vinland Saga",
-        "Исторический экшен о становлении викинга Торфинна, месть и выбор пути.",
-        "https://shikimori.one/animes/39535-vinland-saga",
+    Anime(
+        title="Vinland Saga",
+        description="Исторический экшен о становлении викинга Торфинна, месть и выбор пути.",
+        tags=["история", "драма", "экшен", "викинги"],
+        url="https://shikimori.one/animes/39535-vinland-saga",
     ),
-    (
-        "Made in Abyss",
-        "Путешествие в Безду: дружба, тайны древних технологий и испытания героям.",
-        "https://shikimori.one/animes/34599-made-in-abyss",
+    Anime(
+        title="Made in Abyss",
+        description="Путешествие в Безду: дружба, тайны древних технологий и испытания героям.",
+        tags=["приключения", "фэнтези", "драма", "тайны"],
+        url="https://shikimori.one/animes/34599-made-in-abyss",
     ),
-    (
-        "Mushishi",
-        "Спокойные истории о Гинко, исследующем загадочных существ муши.",
-        "https://shikimori.one/animes/457-mushishi",
+    Anime(
+        title="Mushishi",
+        description="Спокойные истории о Гинко, исследующем загадочных существ муши.",
+        tags=["сверхъестественное", "философия", "слайс оф лайф", "мистика"],
+        url="https://shikimori.one/animes/457-mushishi",
     ),
-    (
-        "Baccano!",
-        "Нелинейный криминальный экшен про бессмертных, гангстеров и алхимию.",
-        "https://shikimori.one/animes/2251-baccano",
+    Anime(
+        title="Baccano!",
+        description="Нелинейный криминальный экшен про бессмертных, гангстеров и алхимию.",
+        tags=["криминал", "драма", "экшен", "альтернативная история"],
+        url="https://shikimori.one/animes/2251-baccano",
     ),
-    (
-        "Hyouka",
-        "Школьный клуб расследует бытовые загадки, балансируя между интригой и бытом.",
-        "https://shikimori.one/animes/12189-hyouka",
+    Anime(
+        title="Hyouka",
+        description="Школьный клуб расследует бытовые загадки, балансируя между интригой и бытом.",
+        tags=["школа", "повседневность", "мистика", "лайт-детектив"],
+        url="https://shikimori.one/animes/12189-hyouka",
     ),
-    (
-        "Samurai Champloo",
-        "Роуд-муви о самураях с хип-хоп эстетикой и яркими персонажами.",
-        "https://shikimori.one/animes/205-samurai-champloo",
+    Anime(
+        title="Samurai Champloo",
+        description="Роуд-муви о самураях с хип-хоп эстетикой и яркими персонажами.",
+        tags=["самураи", "приключения", "музыка", "боевые искусства"],
+        url="https://shikimori.one/animes/205-samurai-champloo",
     ),
-    (
-        "Barakamon",
-        "Тёплая история каллиграфа на острове о творчестве, дружбе и поиске себя.",
-        "https://shikimori.one/animes/22789-barakamon",
+    Anime(
+        title="Barakamon",
+        description="Тёплая история каллиграфа на острове о творчестве, дружбе и поиске себя.",
+        tags=["повседневность", "комедия", "остров", "рост героя"],
+        url="https://shikimori.one/animes/22789-barakamon",
     ),
-    (
-        "Mononoke",
-        "Визуально экспериментальное аниме о таинственном лекаре и ёкаях.",
-        "https://shikimori.one/animes/2246-mononoke",
+    Anime(
+        title="Mononoke",
+        description="Визуально экспериментальное аниме о таинственном лекаре и ёкаях.",
+        tags=["мистика", "триллер", "историческое", "ёкаи"],
+        url="https://shikimori.one/animes/2246-mononoke",
     ),
 ]
 
@@ -59,22 +78,40 @@ user_temperature: Dict[int, float] = defaultdict(lambda: 0.5)
 
 
 def pick_recommendations(temperature: float, limit: int = 5) -> List[Anime]:
-    """Сформировать список рекомендаций с учётом температуры."""
+    """Сформировать список рекомендаций с учётом температуры.
+
+    Более низкая температура → больше неожиданности (больше "шума").
+    Более высокая температура → ближе к базовой выдаче.
+    """
+
     base = RECOMMENDATIONS.copy()
     random.shuffle(base)
-    cutoff = max(1, int(limit * (1 - temperature)))
-    core = base[:cutoff]
+
+    # Чем ниже температура, тем меньше "ядра" и больше экспериментальных позиций.
+    core_size = max(1, int(round(limit * temperature)))
+    core = base[:core_size]
     remaining = [item for item in base if item not in core]
+
     noise = random.sample(remaining, k=min(limit - len(core), len(remaining)))
     result = core + noise
+    random.shuffle(result)
     return result[:limit]
 
 
 def format_recommendations(recs: List[Anime]) -> str:
     """Отформатировать рекомендации для вывода."""
+
     lines = []
-    for title, desc, url in recs:
-        lines.append(f"<b>{title}</b>\n{desc}\n<a href='{url}'>Открыть на Shikimori</a>")
+    for item in recs:
+        tags = ", ".join(item.tags)
+        lines.append(
+            (
+                f"<b>{item.title}</b>\n"
+                f"{item.description}\n"
+                f"Теги: {tags}\n"
+                f"<a href='{item.url}'>Открыть на Shikimori</a>"
+            )
+        )
     return "\n\n".join(lines)
 
 
