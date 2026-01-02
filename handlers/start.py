@@ -1,21 +1,19 @@
 from aiogram import Router
 from aiogram.filters import CommandStart
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import Message
 
-from shikimori import build_authorize_url
+from keyboards import main_menu_keyboard
 
 router = Router()
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message) -> None:
-    state = str(message.from_user.id)
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="Авторизоваться в Shikimori", url=build_authorize_url(state))]
-        ]
-    )
+async def handle_start(message: Message) -> None:
+    """Приветствие и показ главного меню."""
     await message.answer(
-        "Привет! Подключите Shikimori, чтобы бот мог работать с вашими списками.",
-        reply_markup=keyboard,
+        (
+            "Привет! Я бот с рекомендациями аниме.\n"
+            "Нажми кнопку ниже, чтобы получить список или обновить его."
+        ),
+        reply_markup=main_menu_keyboard(),
     )

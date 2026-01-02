@@ -1,70 +1,28 @@
 import asyncio
 import logging
+import os
 
-from aiohttp import web
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
-from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.fsm.storage.redis import DefaultKeyBuilder, RedisStorage
-from redis.asyncio import Redis
+from dotenv import load_dotenv
 
-from config import settings
-from db import init_db
-from handlers.menu import router as menu_router
-from handlers.start import router as start_router
-from webserver import create_app
+from handlers import menu, recommendation, start
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-
-def _build_storage() -> MemoryStorage | RedisStorage:
-    if not settings.redis_url:
-        return MemoryStorage()
-    redis = Redis.from_url(settings.redis_url)
-    return RedisStorage(redis=redis, key_builder=DefaultKeyBuilder(with_bot_id=True, with_destiny=True))
-
-
-async def _run_polling(bot: Bot, dispatcher: Dispatcher, app: web.Application) -> None:
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, settings.http_host, settings.http_port)
-    await site.start()
-    logger.info("Запущен callback-сервер по адресу http://%s:%s", settings.http_host, settings.http_port)
-    await dispatcher.start_polling(bot)
-
-
-async def _run_webhook(bot: Bot, dispatcher: Dispatcher, app: web.Application) -> None:
-    async def on_startup(_: web.Application) -> None:
-        await bot.set_webhook(
-            url=f"{settings.webhook_url}{settings.webhook_path}",
-            secret_token=settings.webhook_secret,
-            drop_pending_updates=True,
-        )
-        logger.info("Webhook настроен: %s", settings.webhook_url)
-
-    async def on_shutdown(_: web.Application) -> None:
-        await bot.delete_webhook(drop_pending_updates=True)
-        logger.info("Webhook удален")
-
-    app.on_startup.append(on_startup)
-    app.on_shutdown.append(on_shutdown)
-    web.run_app(app, host=settings.http_host, port=settings.http_port)
+load_dotenv()
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+if not BOT_TOKEN:
+    raise RuntimeError("BOT_TOKEN не найден. Проверь файл .env")
 
 
 async def main() -> None:
-    await init_db()
-    storage = _build_storage()
-    bot = Bot(token=settings.bot_token, parse_mode=ParseMode.HTML)
-    dispatcher = Dispatcher(storage=storage)
-    dispatcher.include_routers(start_router, menu_router)
-
-    app = create_app(bot, dispatcher)
-
-    if settings.webhook_url:
-        await _run_webhook(bot, dispatcher, app)
-    else:
-        await _run_polling(bot, dispatcher, app)
+    """Запустить Telegram-бота с зарегистрированными роутерами."""
+    logging.basicConfig(level=logging.INFO)
+    bot = Bot(BOT_TOKEN, parse_mode=ParseMode.HTML)
+    dp = Dispatcher()
+    dp.include_router(start.router)
+    dp.include_router(menu.router)
+    dp.include_router(recommendation.router)
+    await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
