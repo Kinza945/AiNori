@@ -1,7 +1,13 @@
-from __future__ import annotations
+from aiogram import Router
+from aiogram.filters import Command
+from aiogram.types import Message
 
-from ainori.bot.app import BotMessage
+from keyboards import main_menu_keyboard
+
+router = Router()
 
 
-async def handle_menu(message: BotMessage) -> None:
-    await message.answer("Доступные команды: /start, /menu, /recommend <поиск>.")
+@router.message(Command("menu"))
+async def handle_menu(message: Message) -> None:
+    """Команда для явного показа меню."""
+    await message.answer("Выберите действие:", reply_markup=main_menu_keyboard())

@@ -1,9 +1,19 @@
-from __future__ import annotations
+from aiogram import Router
+from aiogram.filters import CommandStart
+from aiogram.types import Message
 
-from ainori.bot.app import BotMessage
+from keyboards import main_menu_keyboard
+
+router = Router()
 
 
-async def handle_start(message: BotMessage) -> None:
+@router.message(CommandStart())
+async def handle_start(message: Message) -> None:
+    """Приветствие и показ главного меню."""
     await message.answer(
-        "Привет! Я помогу подобрать аниме. Используй /menu чтобы узнать, что я умею."
+        (
+            "Привет! Я бот с рекомендациями аниме.\n"
+            "Нажми кнопку ниже, чтобы получить список или обновить его."
+        ),
+        reply_markup=main_menu_keyboard(),
     )
