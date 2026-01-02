@@ -1,0 +1,5 @@
+cryptography
+python-dotenv
+redis
+prometheus-client
+sentry-sdk
