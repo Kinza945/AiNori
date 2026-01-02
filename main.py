@@ -1,12 +1,12 @@
 import asyncio
+import logging
 import os
 
 from aiogram import Bot, Dispatcher
+from aiogram.enums import ParseMode
 from dotenv import load_dotenv
 
-from handlers.menu import router as menu_router
-from handlers.recommendation import router as recommendation_router
-from handlers.start import router as start_router
+from handlers import menu, recommendation, start
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -14,17 +14,14 @@ if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN не найден. Проверь файл .env")
 
 
-def create_dispatcher() -> Dispatcher:
-    dispatcher = Dispatcher()
-    dispatcher.include_router(start_router)
-    dispatcher.include_router(menu_router)
-    dispatcher.include_router(recommendation_router)
-    return dispatcher
-
-
 async def main() -> None:
-    bot = Bot(BOT_TOKEN)
-    dp = create_dispatcher()
+    """Запустить Telegram-бота с зарегистрированными роутерами."""
+    logging.basicConfig(level=logging.INFO)
+    bot = Bot(BOT_TOKEN, parse_mode=ParseMode.HTML)
+    dp = Dispatcher()
+    dp.include_router(start.router)
+    dp.include_router(menu.router)
+    dp.include_router(recommendation.router)
     await dp.start_polling(bot)
 
 

@@ -2,15 +2,18 @@ from aiogram import Router
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 
-from settings import settings_repo
+from keyboards import main_menu_keyboard
 
-router = Router(name="start")
+router = Router()
 
 
 @router.message(CommandStart())
 async def handle_start(message: Message) -> None:
-    settings_repo.get(message.from_user.id)
+    """Приветствие и показ главного меню."""
     await message.answer(
-        "Привет! Я помогу подобрать тайтлы. "
-        "Используй /settings чтобы изменить температуру рекомендаций."
+        (
+            "Привет! Я бот с рекомендациями аниме.\n"
+            "Нажми кнопку ниже, чтобы получить список или обновить его."
+        ),
+        reply_markup=main_menu_keyboard(),
     )
